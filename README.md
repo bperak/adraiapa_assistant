@@ -1,0 +1,2 @@
+# adriapa
+Assistant for AdriaPa
