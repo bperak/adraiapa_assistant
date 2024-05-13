@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdriaPA Assistant</title>
+    <style>
+        /* General styling */
+        body {
+            font-family: 'Arial', sans-serif;
+            color: #333;
+            background-color: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        .logo {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 28px;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .conversation-thread {
+            flex: 1;
+            width: 100%;
+            max-width: 600px;
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            width: 100%;
+        }
+
+        .message.user {
+            text-align: right;
+            color: #007bff;
+        }
+
+        .message.assistant {
+            text-align: left;
+            color: #333;
+        }
+
+        .message-content {
+            display: inline-block;
+            background-color: #e9ecef;
+            border-radius: 8px;
+            padding: 10px;
+            max-width: 80%;
+            word-wrap: break-word;
+            box-sizing: border-box;
+        }
+
+        .message.user .message-content {
+            background-color: #007bff;
+            color: #ffffff;
+        }
+
+        .message.assistant .message-content {
+            background-color: #f1f1f1;
+            color: #333;
+        }
+
+        .form-container {
+            width: 100%;
+            max-width: 600px;
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 10px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 10px;
+            box-sizing: border-box;
+        }
+
+        .form-container textarea {
+            flex: 1;
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+            resize: none;
+        }
+
+        .form-container button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: #ffffff;
+            font-weight: 600;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        .form-container button:hover {
+            background-color: #0056b3;
+        }
+
+        .form-container h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            color: #007bff;
+        }
+
+        .form-container-bottom {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            width: 100%;
+            gap: 10px;
+        }
+
+        .export-button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: #ffffff;
+            font-weight: 600;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+
+        .export-button:hover {
+            background-color: #0056b3;
+        }
+
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 24px;
+            }
+
+            .conversation-thread {
+                padding: 10px;
+            }
+
+            .message-content {
+                max-width: 100%;
+            }
+
+            .form-container {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .form-container button {
+                width: 100%;
+            }
+
+            .form-container textarea {
+                width: 100%;
+            }
+
+            .form-container-bottom {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="logo">ADRIA P.A.</div>
+
+    <div class="container">
+        <div id="conversation" class="conversation-thread">
+        </div>
+
+        <div class="form-container form-container-bottom">
+            <textarea id="input" placeholder="Upišite pitanje" rows="3"></textarea>
+            <button type="submit">Pošalji</button>
+            <button type="button" class="export-button" id="export-button">Izvezi</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        const conversation = document.getElementById('conversation');
+        const submit_btn = document.querySelector('button[type="submit"]');
+        const input = document.getElementById('input');
+        const exportButton = document.getElementById('export-button');
+
+        function scrollToBottom() {
+            conversation.scrollTop = conversation.scrollHeight;
+        }
+
+        function addMessage(content, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', sender);
+            messageDiv.innerHTML = `<div class="message-content">${marked.parse(content)}</div>`;
+            conversation.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        submit_btn.addEventListener("click", async (e) => {
+            e.preventDefault();
+
+            const userMessage = input.value;
+            addMessage(userMessage, 'user');
+
+            const response = await fetch("/answer", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({message: userMessage})
+            });
+
+            const reader = response.body.getReader();
+            let output = "";
+
+            // Start with a loading message for the assistant
+            const assistantLoadingDiv = document.createElement('div');
+            assistantLoadingDiv.classList.add('message', 'assistant');
+            assistantLoadingDiv.innerHTML = `<div class="message-content">...</div>`;
+            conversation.appendChild(assistantLoadingDiv);
+
+            while (true) {
+                const { done, value } = await reader.read();
+                output += new TextDecoder().decode(value);
+
+                // Update the assistant's message with markdown parsing
+                assistantLoadingDiv.innerHTML = `<div class="message-content">${marked.parse(output)}</div>`;
+
+                if (done) {
+                    input.value = '';
+                    scrollToBottom();
+                    return;
+                }
+            }
+        });
+
+        function exportConversation() {
+            let textContent = '';
+
+            conversation.querySelectorAll('.message').forEach((msg) => {
+                const sender = msg.classList.contains('user') ? 'User: ' : 'Assistant: ';
+                const messageContent = msg.textContent.trim();
+                textContent += `${sender}${messageContent}\n\n`;
+            });
+
+            const now = new Date();
+            const day = String(now.getDate()).padStart(2, '0');
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const year = now.getFullYear();
+            const hour = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+
+            const fileName = `adriapa_${day}_${month}_${year}_${hour}_${minutes}.txt`;
+
+            const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        exportButton.addEventListener('click', exportConversation);
+    </script>
+</body>
+</html>
